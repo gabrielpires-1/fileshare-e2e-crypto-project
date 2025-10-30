@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  # Serviço do Banco de Dados PostgreSQL
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: secureshare_postgres
+    environment:
+      # ATENÇÃO: Troque esta senha por uma mais forte em produção
+      POSTGRES_USER: secureshare_user
+      POSTGRES_PASSWORD: secureshare_pass 
+      POSTGRES_DB: secureshare_db
+    ports:
+      # Expõe a porta 5432 do container para a porta 5432 do seu host
+      # Assim, sua aplicação Go (rodando localmente) pode acessá-la.
+      - "5432:5432"
+    volumes:
+      # Persiste os dados do banco em um volume no host
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  # Define o volume de persistência
+  postgres-data:
