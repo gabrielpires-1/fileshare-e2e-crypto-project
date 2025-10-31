@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 // Handler gerencia as dependências para os handlers HTTP
@@ -23,6 +25,7 @@ type Handler struct {
 	tokenService    *auth.TokenService
 	userStore       repository.UserStore // Necessário para mapear IDs nos handlers
 	validate        *validator.Validate
+	s3Service       *service.S3Service
 }
 
 // NewHandler cria uma nova instância do Handler
@@ -31,6 +34,7 @@ func NewHandler(
 	transferSvc *service.TransferService,
 	tokenSvc *auth.TokenService,
 	userStore repository.UserStore,
+	s3Svc *service.S3Service,
 ) *Handler {
 	return &Handler{
 		userService:     userSvc,
@@ -38,8 +42,17 @@ func NewHandler(
 		tokenService:    tokenSvc,
 		userStore:       userStore,
 		validate:        validator.New(),
+		s3Service:       s3Svc,
 	}
 }
+
+type (
+	// UserListResponse (conforme solicitado para GET /users)
+	UserListResponse struct {
+		Username  string `json:"username"`
+		PublicKey string `json:"publicKey"`
+	}
+)
 
 // === Funções Auxiliares de Resposta ===
 
@@ -171,6 +184,74 @@ func (h *Handler) handleGetUserKey(w http.ResponseWriter, r *http.Request) {
 	h.respondWithJSON(w, http.StatusOK, response)
 }
 
+func (h *Handler) handleGetUploadURL(w http.ResponseWriter, r *http.Request) {
+	// 1. Obter o usuário autenticado (que está fazendo o upload)
+	user, ok := r.Context().Value(userContextKey).(*models.User)
+	if !ok || user == nil {
+		h.respondWithError(w, http.StatusUnauthorized, "Contexto de usuário inválido")
+		return
+	}
+
+	// 2. Gerar uma chave de objeto (caminho) única e segura para o S3
+	// Formato: uploads/USER_ID/ARQUIVO_UUID
+	fileUUID := uuid.New().String()
+	objectKey := fmt.Sprintf("uploads/%s/%s", user.ID.String(), fileUUID)
+
+	// 3. Gerar a URL pré-assinada
+	// A URL expira em 15 minutos
+	uploadURL, err := h.s3Service.GeneratePresignedPutURL(r.Context(), objectKey, 15*time.Minute)
+	if err != nil {
+		h.respondWithError(w, http.StatusInternalServerError, "Não foi possível gerar a URL de upload")
+		return
+	}
+
+	// 4. Responder ao cliente com a URL e a chave do arquivo
+	// O 'linkToEncFile' é a chave que o cliente deve nos enviar de volta no
+	// POST /transfers (após o upload ser concluído).
+	response := struct {
+		UploadURL     string `json:"uploadUrl"`
+		LinkToEncFile string `json:"linkToEncFile"`
+	}{
+		UploadURL:     uploadURL,
+		LinkToEncFile: objectKey,
+	}
+
+	h.respondWithJSON(w, http.StatusOK, response)
+}
+
+func (h *Handler) handleGetDownloadURL(w http.ResponseWriter, r *http.Request) {
+	// 1. Obter o usuário autenticado
+	_, ok := r.Context().Value(userContextKey).(*models.User)
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "Contexto de usuário inválido")
+		return
+	}
+
+	// 2. Obter a chave do arquivo (ex: "uploads/...") da query string
+	// (Ex: /transfers/download-url?fileKey=uploads/123/456)
+	fileKey := r.URL.Query().Get("fileKey")
+	if fileKey == "" {
+		h.respondWithError(w, http.StatusBadRequest, "Parâmetro 'fileKey' é obrigatório")
+		return
+	}
+
+	// 3. Gerar a URL pré-assinada (válida por 5 minutos)
+	downloadURL, err := h.s3Service.GeneratePresignedGetURL(r.Context(), fileKey, 5*time.Minute)
+	if err != nil {
+		h.respondWithError(w, http.StatusInternalServerError, "Não foi possível gerar a URL de download")
+		return
+	}
+
+	// 4. Responder ao cliente
+	response := struct {
+		DownloadURL string `json:"downloadUrl"`
+	}{
+		DownloadURL: downloadURL,
+	}
+
+	h.respondWithJSON(w, http.StatusOK, response)
+}
+
 // === Handlers de Transferência ===
 
 // handleCreateTransfer (POST /transfers)
@@ -261,4 +342,31 @@ func (h *Handler) handleGetTransfers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondWithJSON(w, http.StatusOK, metadataList)
+}
+
+func (h *Handler) handleGetAllUsers(w http.ResponseWriter, r *http.Request) {
+	// 1. Obter o usuário autenticado (só para garantir que a rota é protegida)
+	_, ok := r.Context().Value(userContextKey).(*models.User)
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "Contexto de usuário inválido")
+		return
+	}
+
+	// 2. Chamar o serviço
+	users, err := h.userService.GetAllUsers(r.Context())
+	if err != nil {
+		h.respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// 3. Mapear para a resposta (para não expor dados desnecessários)
+	response := make([]UserListResponse, 0, len(users))
+	for _, user := range users {
+		response = append(response, UserListResponse{
+			Username:  user.Username,
+			PublicKey: user.PublicKey,
+		})
+	}
+
+	h.respondWithJSON(w, http.StatusOK, response)
 }

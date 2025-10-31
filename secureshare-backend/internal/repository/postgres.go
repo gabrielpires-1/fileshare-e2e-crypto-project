@@ -184,3 +184,40 @@ func (s *PostgresStore) GetTransfersByDestUserID(ctx context.Context, destUserID
 
 	return transfers, nil
 }
+
+func (s *PostgresStore) GetAllUsers(ctx context.Context) ([]*models.User, error) {
+	sql := `
+        SELECT id, username, password_hash, public_key, created_at 
+        FROM users 
+        ORDER BY username`
+
+	rows, err := s.db.Query(ctx, sql)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao buscar todos os usuários: %w", err)
+	}
+	defer rows.Close()
+
+	// Inicializa como slice vazio para consistência de JSON
+	users := []*models.User{}
+
+	for rows.Next() {
+		user := &models.User{}
+		err := rows.Scan(
+			&user.ID,
+			&user.Username,
+			&user.PasswordHash,
+			&user.PublicKey,
+			&user.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("falha ao escanear linha de usuário: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("erro ao iterar sobre os usuários: %w", err)
+	}
+
+	return users, nil
+}

@@ -105,3 +105,12 @@ func (s *UserService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.Us
 	}
 	return user, nil
 }
+
+func (s *UserService) GetAllUsers(ctx context.Context) ([]*models.User, error) {
+	users, err := s.store.GetAllUsers(ctx)
+	if err != nil {
+		log.Printf("Erro ao buscar usuários no store: %v", err)
+		return nil, fmt.Errorf("erro interno ao buscar usuários")
+	}
+	return users, nil
+}

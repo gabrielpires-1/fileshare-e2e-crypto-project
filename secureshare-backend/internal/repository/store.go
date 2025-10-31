@@ -13,6 +13,7 @@ type UserStore interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	GetAllUsers(ctx context.Context) ([]*models.User, error)
 }
 
 // TransferStore define a interface para operações de transferência no DB
