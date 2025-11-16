@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     username      TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     public_key    TEXT NOT NULL,
+    public_key_sign TEXT NOT NULL,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT (NOW())
 );
 

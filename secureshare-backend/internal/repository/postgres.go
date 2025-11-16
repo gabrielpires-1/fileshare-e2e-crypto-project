@@ -49,17 +49,17 @@ func (s *PostgresStore) RunMigrations(ctx context.Context, migrationSQL string) 
 }
 
 // --- UserStore ---
-
 func (s *PostgresStore) CreateUser(ctx context.Context, user *models.User) error {
 	sql := `
-        INSERT INTO users (id, username, password_hash, public_key, created_at) 
-        VALUES ($1, $2, $3, $4, $5)`
+        INSERT INTO users (id, username, password_hash, public_key, public_key_sign, created_at) 
+        VALUES ($1, $2, $3, $4, $5, $6)`
 
 	_, err := s.db.Exec(ctx, sql,
 		user.ID,
 		user.Username,
 		user.PasswordHash,
 		user.PublicKey,
+		user.PublicKeySign,
 		user.CreatedAt,
 	)
 
@@ -69,6 +69,7 @@ func (s *PostgresStore) CreateUser(ctx context.Context, user *models.User) error
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // 23505 = unique_violation
 			return fmt.Errorf("usuário '%s' já existe", user.Username)
 		}
+		// Este é o erro que você está vendo
 		return fmt.Errorf("falha ao criar usuário: %w", err)
 	}
 	return nil
@@ -76,7 +77,7 @@ func (s *PostgresStore) CreateUser(ctx context.Context, user *models.User) error
 
 func (s *PostgresStore) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	sql := `
-        SELECT id, username, password_hash, public_key, created_at 
+        SELECT id, username, password_hash, public_key, public_key_sign, created_at 
         FROM users 
         WHERE username = $1`
 
@@ -86,6 +87,7 @@ func (s *PostgresStore) GetUserByUsername(ctx context.Context, username string) 
 		&user.Username,
 		&user.PasswordHash,
 		&user.PublicKey,
+		&user.PublicKeySign,
 		&user.CreatedAt,
 	)
 
@@ -100,7 +102,7 @@ func (s *PostgresStore) GetUserByUsername(ctx context.Context, username string) 
 
 func (s *PostgresStore) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	sql := `
-        SELECT id, username, password_hash, public_key, created_at 
+        SELECT id, username, password_hash, public_key, public_key_sign, created_at 
         FROM users 
         WHERE id = $1`
 
@@ -110,6 +112,7 @@ func (s *PostgresStore) GetUserByID(ctx context.Context, id uuid.UUID) (*models.
 		&user.Username,
 		&user.PasswordHash,
 		&user.PublicKey,
+		&user.PublicKeySign,
 		&user.CreatedAt,
 	)
 
@@ -187,7 +190,7 @@ func (s *PostgresStore) GetTransfersByDestUserID(ctx context.Context, destUserID
 
 func (s *PostgresStore) GetAllUsers(ctx context.Context) ([]*models.User, error) {
 	sql := `
-        SELECT id, username, password_hash, public_key, created_at 
+        SELECT id, username, password_hash, public_key, public_key_sign, created_at
         FROM users 
         ORDER BY username`
 
@@ -207,6 +210,7 @@ func (s *PostgresStore) GetAllUsers(ctx context.Context) ([]*models.User, error)
 			&user.Username,
 			&user.PasswordHash,
 			&user.PublicKey,
+			&user.PublicKeySign,
 			&user.CreatedAt,
 		)
 		if err != nil {

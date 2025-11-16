@@ -49,8 +49,9 @@ func NewHandler(
 type (
 	// UserListResponse (conforme solicitado para GET /users)
 	UserListResponse struct {
-		Username  string `json:"username"`
-		PublicKey string `json:"publicKey"`
+		Username      string `json:"username"`
+		PublicKey     string `json:"publicKey"`
+		PublicKeySign string `json:"publicKeySign"`
 	}
 )
 
@@ -84,8 +85,9 @@ func (h *Handler) respondWithJSON(w http.ResponseWriter, code int, payload inter
 type (
 	// PublicKeyResponse (conforme OpenAPI)
 	PublicKeyResponse struct {
-		Username  string `json:"username"`
-		PublicKey string `json:"publicKey"`
+		Username      string `json:"username"`
+		PublicKey     string `json:"publicKey"`
+		PublicKeySign string `json:"publicKeySign"`
 	}
 
 	// TransferMetadata (conforme OpenAPI)
@@ -105,9 +107,10 @@ type (
 // handleRegisterUser (POST /users/register)
 func (h *Handler) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Username  string `json:"username" validate:"required"`
-		Password  string `json:"password" validate:"required,min=8"`
-		PublicKey string `json:"publicKey" validate:"required"`
+		Username      string `json:"username" validate:"required"`
+		Password      string `json:"password" validate:"required,min=8"`
+		PublicKey     string `json:"publicKey" validate:"required"`
+		PublicKeySign string `json:"publicKeySign" validate:"required"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -120,7 +123,7 @@ func (h *Handler) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.userService.Register(r.Context(), req.Username, req.Password, req.PublicKey)
+	_, err := h.userService.Register(r.Context(), req.Username, req.Password, req.PublicKey, req.PublicKeySign)
 	if err != nil {
 		// Verifica se é um erro de "usuário já existe"
 		if err.Error() == "usuário '"+req.Username+"' já existe" {
@@ -177,8 +180,9 @@ func (h *Handler) handleGetUserKey(w http.ResponseWriter, r *http.Request) {
 
 	// Mapeia para o schema de resposta
 	response := PublicKeyResponse{
-		Username:  user.Username,
-		PublicKey: user.PublicKey,
+		Username:      user.Username,
+		PublicKey:     user.PublicKey,
+		PublicKeySign: user.PublicKeySign,
 	}
 
 	h.respondWithJSON(w, http.StatusOK, response)
@@ -363,8 +367,9 @@ func (h *Handler) handleGetAllUsers(w http.ResponseWriter, r *http.Request) {
 	response := make([]UserListResponse, 0, len(users))
 	for _, user := range users {
 		response = append(response, UserListResponse{
-			Username:  user.Username,
-			PublicKey: user.PublicKey,
+			Username:      user.Username,
+			PublicKey:     user.PublicKey,
+			PublicKeySign: user.PublicKeySign,
 		})
 	}
 

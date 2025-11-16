@@ -29,9 +29,9 @@ func NewUserService(store repository.UserStore, tokenService *auth.TokenService)
 }
 
 // Register cria um novo usuário
-func (s *UserService) Register(ctx context.Context, username, password, publicKey string) (*models.User, error) {
+func (s *UserService) Register(ctx context.Context, username, password, publicKey, publicKeySign string) (*models.User, error) {
 	// Validação (simples, pode ser melhorada com 'validator')
-	if username == "" || password == "" || publicKey == "" {
+	if username == "" || password == "" || publicKey == "" || publicKeySign == "" {
 		return nil, fmt.Errorf("username, password e publicKey são obrigatórios")
 	}
 
@@ -48,11 +48,12 @@ func (s *UserService) Register(ctx context.Context, username, password, publicKe
 	}
 
 	user := &models.User{
-		ID:           uuid.New(),
-		Username:     username,
-		PasswordHash: string(hash),
-		PublicKey:    publicKey,
-		CreatedAt:    time.Now(),
+		ID:            uuid.New(),
+		Username:      username,
+		PasswordHash:  string(hash),
+		PublicKey:     publicKey,
+		PublicKeySign: publicKeySign,
+		CreatedAt:     time.Now(),
 	}
 
 	if err := s.store.CreateUser(ctx, user); err != nil {
