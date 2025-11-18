@@ -87,7 +87,7 @@ export default function RegisterPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold text-center">Criar Conta (v2)</h1>
+        <h1 className="text-2xl font-bold text-center">Criar Conta</h1>
         
         {/* O formulário não muda */}
         <form onSubmit={handleSubmit} className="space-y-6">
