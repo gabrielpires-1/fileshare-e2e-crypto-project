@@ -34,11 +34,11 @@ export default function RegisterPage() {
     }
 
     try {
-      // 1. Gerar AMBOS os pares de chaves
+      // Gerar AMBOS os pares de chaves
       console.log('Gerando chaves de criptografia e assinatura...');
       const { encryptKeys, signKeys } = await generateAllKeys();
 
-      // 3. Enviar dados para a API Go
+      // Enviar dados para a API Go
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const res = await fetch(`${apiUrl}/users/register`, {
         method: 'POST',
@@ -56,17 +56,16 @@ export default function RegisterPage() {
         throw new Error(errorData.error.message || 'Falha ao registrar.');
       }
 
-      // 4. Sucesso!
+      // Sucesso!
       console.log('Usuário registrado com sucesso!');
       
-      // --- 3. EM VEZ DE REDIRECIONAR, ABRA O MODAL ---
+      // --- EM VEZ DE REDIRECIONAR, ABRA O MODAL ---
       // Salva as chaves privadas no estado para passar ao modal
       setGeneratedKeys({
         encrypt: encryptKeys.privateKey,
         sign: signKeys.privateKey
       });
       setShowModal(true); // Abre o modal
-      // REMOVEMOS o alert() e o router.push() daqui
 
     } catch (err: any) {
       console.error(err);
@@ -77,7 +76,7 @@ export default function RegisterPage() {
     }
   };
 
-  // --- 4. Função para fechar o modal e redirecionar ---
+  // --- Função para fechar o modal e redirecionar ---
   const handleModalClose = () => {
     setShowModal(false);
     // Redireciona para o login SÓ DEPOIS que o usuário fechar o modal
@@ -133,6 +132,7 @@ export default function RegisterPage() {
           onClose={handleModalClose}
           encryptPrivateKey={generatedKeys.encrypt}
           signPrivateKey={generatedKeys.sign}
+          username={username}
         />
       )}
     </div>

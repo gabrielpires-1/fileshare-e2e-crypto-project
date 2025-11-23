@@ -7,9 +7,9 @@ type PrivateKeyModalProps = {
   onClose: () => void;
   encryptPrivateKey: string;
   signPrivateKey: string;
+  username: string;
 };
 
-// NOVO: Função auxiliar para não repetir a lógica de download
 const triggerDownload = (content: string, filename: string) => {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -26,30 +26,27 @@ export function PrivateKeyModal({
   isOpen, 
   onClose, 
   encryptPrivateKey, 
-  signPrivateKey 
+  signPrivateKey,
+  username 
 }: PrivateKeyModalProps) {
 
-  // Efeito para travar o scroll (não muda)
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'auto';
     return () => { document.body.style.overflow = 'auto' };
   }, [isOpen]);
 
-  // NOVO: Handler para baixar a chave de criptografia
   const handleDownloadEncryptKey = () => {
-    triggerDownload(encryptPrivateKey, 'secureshare_encrypt_private_key.pem');
+    triggerDownload(encryptPrivateKey, `secureshare_encrypt_private_key_${username}.pem`);
   };
 
-  // NOVO: Handler para baixar a chave de assinatura
   const handleDownloadSignKey = () => {
-    triggerDownload(signPrivateKey, 'secureshare_sign_private_key.pem');
+    triggerDownload(signPrivateKey, `secureshare_sign_private_key_${username}.pem`);
   };
 
   if (!isOpen) return null;
 
   return (
-    // Fundo (overlay)
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
       aria-labelledby="modal-title"
@@ -72,7 +69,7 @@ export function PrivateKeyModal({
         </h2>
         
         <p className="text-gray-300 mb-4">
-          Sua conta foi criada. Para sua segurança, suas chaves privadas **não** são salvas em nosso servidor.
+          Sua conta foi criada. Para sua segurança, suas chaves privadas **não** são salvas em nosso servidor. Suas chaves são geradas localmente e apenas as chaves públicas são enviadas para o servidor. As chaves privadas não são enviadas ao servidor.
         </p>
         <p className="text-gray-300 mb-6">
           Você **deve** baixar suas **duas** chaves agora. Guarde estes arquivos em um local seguro.
@@ -86,7 +83,7 @@ export function PrivateKeyModal({
           </p>
         </div>
         
-        {/* NOVO: Div com os dois botões de download */}
+        {/*Div com os dois botões de download */}
         <div className="flex flex-col space-y-3">
           <button
             onClick={handleDownloadEncryptKey}
